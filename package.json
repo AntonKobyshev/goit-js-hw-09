@@ -4,7 +4,7 @@
   "description": "",
   "homepage": "https://AntonKobyshev.github.io/goit-js-hw-09",
   "scripts": {
-    "start": "parcel src/*.html -p 5000 --open",
+    "start": "parcel src/*.html -p 5555 --open",
     "build": "parcel build src/*.html --public-url /goit-js-hw-09/"
   },
   "repository": {

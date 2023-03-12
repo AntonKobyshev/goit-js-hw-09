@@ -1,108 +1,86 @@
-import flatpickr from 'flatpickr';
-import 'flatpickr/dist/flatpickr.min.css';
-import { Report } from 'notiflix/build/notiflix-report-aio';
+import flatpickr from "flatpickr";
+import "flatpickr/dist/flatpickr.min.css";
+import { Notify } from 'notiflix/build/notiflix-notify-aio';
 
-document.body.style.backgroundColor = '#ece5da';
-const TIMER_DELAY = 1000;
-let intervalId = null;
-let selectedDate = null;
-let currentDate = null;
+const refs = {
+    calendarEl: document.querySelector('[id = "datetime-picker"]'),
+    startTimerBtn: document.querySelector('[data-start]'),
+    timerValueEls: document.querySelectorAll('.value'),
+};
 
-const calendar = document.querySelector('#datetime-picker');
-const startBtn = document.querySelector('[data-start-timer]');
-startBtn.disabled = true;
+let saleEndDate = null;
+let timerId = null;
 
-Report.info(
-  '👋 Greeting, my Friend!',
-  'Please, choose a date and click on start',
-  'Okay'
-);
+disableStartBtn();
 
-flatpickr(calendar, {
-  enableTime: true,
-  time_24hr: true,
-  defaultDate: new Date(),
-  minuteIncrement: 1,
-  onClose(selectedDates) {
-    if (selectedDates[0].getTime() < Date.now()) {
-      Report.failure(
-        '🥺 Ooops...',
-        'Please, choose a date in the future and remember: "Knowledge rests not upon truth alone, but upon error also." - Carl Gustav Jung',
-        'Okay'
-      );
-    } else {
-      Report.success(
-        '🥰 Congratulation! Click on start!',
-        '"Do not try to become a person of success but try to become a person of value." <br/><br/>- Albert Einstein',
-        'Okay'
-      );
-      startBtn.disabled = false;
-      const setTimer = () => {
-        selectedDate = selectedDates[0].getTime();
-        timer.start();
-      };
-
-      startBtn.addEventListener('click', setTimer);
-    }
-  },
+refs.startTimerBtn.addEventListener('click', () => {
+    onStartTimer();
+    clearInterval(timerId);
+    timerId = setInterval(onStartTimer, 1000);
+    disableStartBtn();
 });
 
-const timer = {
-  rootSelector: document.querySelector('.timer'),
-  start() {
-    intervalId = setInterval(() => {
-      startBtn.disabled = true;
-      calendar.disabled = true;
-      currentDate = Date.now();
-      const delta = selectedDate - currentDate;
+function onStartTimer() {
+    const deltaTime = convertMs(saleEndDate - Date.now());
+    if (deltaTime.seconds < 0) {
+        anableStartBtn();
+        return '';
+    }
+    Object.entries(deltaTime).forEach(([key, value], index) => {
+        [...refs.timerValueEls][index].textContent = addLeadingZero(value);
+    });
+}
 
-      if (delta <= 0) {
-        this.stop();
-        Report.info(
-          '👏 Congratulation! Timer stopped!',
-          'Please, if you want to start timer, choose a date and click on start or reload this page',
-          'Okay'
-        );
-        return;
-      }
-      const { days, hours, minutes, seconds } = this.convertMs(delta);
-      this.rootSelector.querySelector('[data-days]').textContent =
-        this.addLeadingZero(days);
-      this.rootSelector.querySelector('[data-hours]').textContent =
-        this.addLeadingZero(hours);
-      this.rootSelector.querySelector('[data-minutes]').textContent =
-        this.addLeadingZero(minutes);
-      this.rootSelector.querySelector('[data-seconds]').textContent =
-        this.addLeadingZero(seconds);
-    }, TIMER_DELAY);
-  },
+flatpickr(refs.calendarEl, {
+    enableTime: true,
+    time_24hr: true,
+    defaultDate: new Date(),
+    minuteIncrement: 1,
+    onClose(selectedDates) {
+        if (selectedDates[0] < Date.now()) {
+            disableStartBtn();
+            notifyFailure();
+            return '';
+        }
+        anableStartBtn();
+        saleEndDate = selectedDates[0];
+        clearInterval(timerId);
+        refs.timerValueEls.forEach(elem => elem.textContent = '00');
+    },
+});
 
-  stop() {
-    clearInterval(intervalId);
-    this.intervalId = null;
-    startBtn.disabled = true;
-    calendar.disabled = false;
-  },
+function addLeadingZero(value) {
+    return String(value).padStart(2, 0);
+}
 
-  convertMs(ms) {
+function convertMs(ms) {
+
     const second = 1000;
     const minute = second * 60;
     const hour = minute * 60;
     const day = hour * 24;
 
-    const days = this.addLeadingZero(Math.floor(ms / day));
-    const hours = this.addLeadingZero(Math.floor((ms % day) / hour));
-    const minutes = this.addLeadingZero(
-      Math.floor(((ms % day) % hour) / minute)
-    );
-    const seconds = this.addLeadingZero(
-      Math.floor((((ms % day) % hour) % minute) / second)
-    );
+    const days = Math.floor(ms / day);
+    const hours = Math.floor((ms % day) / hour);
+    const minutes = Math.floor(((ms % day) % hour) / minute);
+    const seconds = Math.floor((((ms % day) % hour) % minute) / second);
 
     return { days, hours, minutes, seconds };
-  },
+}
 
-  addLeadingZero(value) {
-    return String(value).padStart(2, 0);
-  },
-};
+function notifyFailure() {
+    Notify.failure('Please choose a date in the furute', {
+        timeout: 2000,
+        clickToClose: true,
+        pauseOnHover: false,
+        showOnlyTheLastOne: true,
+    });
+}
+
+function disableStartBtn() {
+    refs.startTimerBtn.setAttribute('disabled', 'true');
+}
+
+function anableStartBtn() {
+    refs.startTimerBtn.removeAttribute('disabled');
+}
